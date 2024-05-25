@@ -250,7 +250,12 @@ Model = PosOrNeg(
 
 print(Model)
 
-Model.load_state_dict(torch.load(f="Model.pth"))
+from pathlib import Path
+
+Model_Pth = Path("Model.pth")
+
+if Model_Pth.is_file():
+    Model.load_state_dict(torch.load(f="Model.pth"))
 
 def Predict(Sentence):    
     Ind = GetIndicieSentence(InputWords, SplitSentence(Sentence, SepLetterList))
@@ -260,14 +265,20 @@ def Predict(Sentence):
 
 Sentence = "I am impressed."
 
-while(Sentence != "Quit"):
-    Sentence = input("Enter Sentence To Predict(Quit): ")
-    
-    if Sentence != "Quit":
-        print("The Sentence is: ", TargetWords.Words[Predict(Sentence)])
+from enum import Enum
 
-# y_pred = Model(InputTensor).squeeze(dim=2)
-# print(y_pred[:100])
+class States(Enum):
+    TRAIN = 1
+    TEST = 2
+
+CURRENT_STATE = States.TRAIN
+
+if CURRENT_STATE == States.TEST:
+    while(Sentence != "Quit"):
+        Sentence = input("Enter Sentence To Predict(Quit): ")
+        
+        if Sentence != "Quit":
+            print("The Sentence is: ", TargetWords.Words[Predict(Sentence)])
 
 def GetAccuracy(TargetTensor, PredTensor, IndexRange):
     Acc = 0
@@ -277,29 +288,27 @@ def GetAccuracy(TargetTensor, PredTensor, IndexRange):
             Acc += 1
     return (Acc/IndexRange)*100
 
-# print(GetAccuracy(TargetTensor, torch.round(y_pred), 500), "%")   
-exit()
+if CURRENT_STATE == States.TRAIN:
+    Loss_Fn = nn.BCELoss()
+    Optim = torch.optim.Adam(params=Model.parameters(), lr=LEARNING_RATE)
 
-Loss_Fn = nn.BCELoss()
-Optim = torch.optim.Adam(params=Model.parameters(), lr=LEARNING_RATE)
+    for epoch in range(N_EPOCHS):
+        Since = time.time()
 
-for epoch in range(N_EPOCHS):
-    Since = time.time()
+        Model.train()
 
-    Model.train()
+        y_pred : torch.Tensor = Model(InputTensor).squeeze(dim=2)
+        Loss = Loss_Fn(y_pred, TargetTensor)
+        
+        Acc = GetAccuracy(TargetTensor, torch.round(y_pred), 2000)
 
-    y_pred : torch.Tensor = Model(InputTensor).squeeze(dim=2)
-    Loss = Loss_Fn(y_pred, TargetTensor)
-    
-    Acc = GetAccuracy(TargetTensor, torch.round(y_pred), 2000)
+        Optim.zero_grad()
+        Loss.backward()
+        Optim.step()
 
-    Optim.zero_grad()
-    Loss.backward()
-    Optim.step()
+        Now = time.time() - Since
 
-    Now = time.time() - Since
+        print(f"Epoch: {epoch}/{N_EPOCHS} Loss: {Loss:.4f} Acc: {Acc}%")
+        print(f"Took: {Now}s Estimated Remaining Time: {(Now*(N_EPOCHS-epoch))}s")
 
-    print(f"Epoch: {epoch}/{N_EPOCHS} Loss: {Loss:.4f} Acc: {Acc}%")
-    print(f"Took: {Now}s Estimated Remaining Time: {(Now*(N_EPOCHS-epoch))}s")
-
-torch.save(f="Model.pth", obj=Model.state_dict())
+    torch.save(f="Model.pth", obj=Model.state_dict())
