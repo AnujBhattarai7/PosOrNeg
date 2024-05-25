@@ -1,4 +1,5 @@
 from typing import Any
+from Words import WordStorage, DEAFULT_TOKETS, START_TOKEN, EMPTY_TOKEN, END_TOKEN, CreateWordStorage, Split, SplitSentence
 
 Text = ""
 
@@ -41,71 +42,12 @@ for x in Text:
 print(InputTexts[0])
 print(TargetTexts[0])
 
+# The List of letters serving as a spereator
 SepLetterList = [' ', '.', '!', '?', ';', ',', '-', ')', '(', '"', "'"]
 
-def SplitSentence(Sentence : str, SepLetterList : list[str]) -> list[str]:
-    SentenceList = []
-
-    PrevSepLetterIdx = 0
-    
-    for LetterIdx in range(len(Sentence)):
-        if Sentence[LetterIdx] in SepLetterList:
-            SentenceList.append(Sentence[PrevSepLetterIdx:LetterIdx])
-            SentenceList.append(Sentence[LetterIdx])
-            PrevSepLetterIdx = LetterIdx
-        elif LetterIdx == len(Sentence)-1:
-            SentenceList.append(Sentence[PrevSepLetterIdx:])
-    
-    return SentenceList
-
-def Split(Text, SepLetterList) -> list[list[str]]:
-    RetText = []
-    for Sentence in Text:
-        RetText.append(SplitSentence(Sentence, SepLetterList))
-    return RetText
-
-InputTexts = Split(InputTexts, SepLetterList)
-
-# print(InputTexts[0])
-# print(TargetTexts[0])
-
-START_TOKEN = "<sos>"
-END_TOKEN = "<eos>"
-EMPTY_TOKEN = ''
-DEAFULT_TOKETS = [EMPTY_TOKEN, START_TOKEN, END_TOKEN]
-
-class WordStorage:
-    def __init__(self, UseDeafultTokens = True) -> None:
-        self.N_Words = 0
-        self.Words2Idx = {}  
-        self.Words = []
-
-        if UseDeafultTokens:
-            for x in DEAFULT_TOKETS:
-                self.AddWord(x)
-
-    def AddSentence(self, Sentence : str):
-        SentenceList = SplitSentence(Sentence, SepLetterList)
-        
-        for Word in SentenceList:
-            self.AddWord(Word)
-
-    def AddSentenceList(self, SentenceList : list[str]):        
-        for Word in SentenceList:
-            self.AddWord(Word)
-
-    def AddWord(self, Word):
-        if Word not in self.Words:
-            self.Words.append(Word)
-            self.Words2Idx[Word] = len(self.Words2Idx)
-            self.N_Words += 1
-
-InputWords = WordStorage()
+InputWords = CreateWordStorage(InputTexts, SepLetterList, True)
 TargetWords = WordStorage(False)
 Since = time.time()
-
-for x in InputTexts:
-    InputWords.AddSentenceList(x)
 
 TargetWords.AddWord("negative")
 TargetWords.AddWord("positive")
@@ -116,7 +58,7 @@ print(f"Time Taken: {(Now*100):.4f}ms")
 # print(InputWords.Words)
 # print(InputWords.Words2Idx)
 
-def GetIndicieSentence(wordstorage : WordStorage, SentenceList : list[str]):    
+def GetIndicieSentence(wordstorage :  WordStorage, SentenceList : list[str]):    
     Indicies = [wordstorage.Words2Idx[START_TOKEN]]
     
     for y in SentenceList:
@@ -138,7 +80,7 @@ def GetIndicies(wordstorage : WordStorage, Text) -> (list[list[int]], int):
 
     return RetIndicies, MaxLen
 
-InputIndicies, MaxInputLen = GetIndicies(InputWords, InputTexts)
+InputIndicies, MaxInputLen = GetIndicies(InputWords, Split(InputTexts, SepLetterList))
 
 def Indicies2Str(Indicies, wordstorage : WordStorage):
     Sentence = ""
@@ -271,7 +213,7 @@ class States(Enum):
     TRAIN = 1
     TEST = 2
 
-CURRENT_STATE = States.TRAIN
+CURRENT_STATE = States.TEST
 
 if CURRENT_STATE == States.TEST:
     while(Sentence != "Quit"):
